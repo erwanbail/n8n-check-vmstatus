@@ -1,0 +1,164 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "command": "apt list --upgradable ; uptime"
+      },
+      "id": "782d9f93-81e3-497f-988d-a4a793a6709f",
+      "name": "List upgradable packages",
+      "type": "n8n-nodes-base.ssh",
+      "position": [
+        2200,
+        880
+      ],
+      "notesInFlow": true,
+      "typeVersion": 1,
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPassword": {
+          "id": "",
+          "name": "SSH Password account"
+        }
+      },
+      "notes": "apt list --upgradable ; uptime"
+    },
+    {
+      "parameters": {
+        "fromEmail": "mail@gmail.com",
+        "toEmail": "mail2@gmail.com",
+        "subject": "Need updates",
+        "html": "=\n\n{{ $json.htmlList }}\n\n",
+        "options": {}
+      },
+      "id": "da433f96-6925-476d-bf67-60e9ff356d0f",
+      "name": "Send Email through SMTP",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [
+        2840,
+        880
+      ],
+      "webhookId": "8073c571-b36f-4330-a510-ca2ff2924fbf",
+      "typeVersion": 2.1,
+      "credentials": {
+        "smtp": {
+          "id": "h0QjgLJvebvqGqEe",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "69167a35-facb-46c3-979a-9f67948a5b4f",
+      "name": "Run workflow every day",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        1920,
+        880
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "jsCode": "function formatStdoutAsHtml(stdoutData) {\n    const lines = stdoutData.trim().split('\\n');\n\n    // Sépare la dernière ligne (uptime) du reste\n    const uptimeLine = lines.pop().trim();\n    const aptLines = lines\n        .filter(line => line.trim() && line.trim() !== \"Listing...\")\n        .map(line => `<li>${line.trim()}</li>`);\n\n    const htmlAptList = aptLines.length\n        ? `<h2 style=\"color:#2c3e50;\">🛠️ Packages à mettre à jour</h2><ul>${aptLines.join('')}</ul>`\n        : `<h2 style=\"color:#27ae60;\">✅ Aucun paquet à mettre à jour</h2>`;\n\n    const htmlUptime = `<h2 style=\"color:#2c3e50;\">📈 Uptime</h2><p>${uptimeLine}</p>`;\n\n    return {\n        htmlList: `${htmlAptList}<br>${htmlUptime}`\n    };\n}\n\nreturn formatStdoutAsHtml($input.first().json.stdout);\n"
+      },
+      "id": "22e541f6-ea9a-43af-ab17-043ddb49f60d",
+      "name": "Format as HTML list",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2400,
+        880
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "db66d892-26fb-406c-a0ac-2e4b8a60310a",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "leftValue": "={{ $json.htmlList }}",
+              "rightValue": "<ul></ul>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "66e05e30-01cd-40a3-b3f8-81fb15d87121",
+      "name": "Check if there are updates",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2600,
+        880
+      ],
+      "typeVersion": 2.2
+    }
+  ],
+  "connections": {
+    "List upgradable packages": {
+      "main": [
+        [
+          {
+            "node": "Format as HTML list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run workflow every day": {
+      "main": [
+        [
+          {
+            "node": "List upgradable packages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format as HTML list": {
+      "main": [
+        [
+          {
+            "node": "Check if there are updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if there are updates": {
+      "main": [
+        [
+          {
+            "node": "Send Email through SMTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e697ae628de30fab76c2523b347d0e192c035dac9823b1e37372cafb8438ff61"
+  }
+}
